@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import requests
+import json
+import time
+
 from peewee import Model, SqliteDatabase, InsertQuery, IntegerField,\
                    CharField, FloatField, BooleanField, DateTimeField
 from datetime import datetime
@@ -103,6 +107,8 @@ class ScannedLocation(BaseModel):
 
         return scans
 
+pushed = {}
+
 def parse_map(map_dict, iteration_num, step, step_location):
     pokemons = {}
     pokestops = {}
@@ -116,6 +122,7 @@ def parse_map(map_dict, iteration_num, step, step_location):
                 (p['last_modified_timestamp_ms'] +
                  p['time_till_hidden_ms']) / 1000.0)
             printPokemon(p['pokemon_data']['pokemon_id'],p['latitude'],p['longitude'],d_t)
+
             pokemons[p['encounter_id']] = {
                 'encounter_id': b64encode(str(p['encounter_id'])),
                 'spawnpoint_id': p['spawnpoint_id'],
@@ -124,6 +131,18 @@ def parse_map(map_dict, iteration_num, step, step_location):
                 'longitude': p['longitude'],
                 'disappear_time': d_t
             }
+
+            print(d_t)
+            if p['spawnpoint_id'] not in pushed or pushed[p['spawnpoint_id']] < time.time():
+                push(
+                    p['pokemon_data']['pokemon_id'],
+                    get_pokemon_name(p['pokemon_data']['pokemon_id']).lower(),
+                    p['latitude'],
+                    p['longitude'],
+                    (p['last_modified_timestamp_ms'] + p['time_till_hidden_ms']) / 1000.0
+                )
+                pushed[p['spawnpoint_id']] = (p['last_modified_timestamp_ms'] + p['time_till_hidden_ms']) / 1000.0
+            else: print('not pushing ' + get_pokemon_name(p['pokemon_data']['pokemon_id']).lower())
 
         if iteration_num > 0 or step > 50:
             for f in cell.get('forts', []):
@@ -190,9 +209,13 @@ def bulk_upsert(cls, data):
         InsertQuery(cls, rows=data.values()[i:min(i+step, num_rows)]).upsert().execute()
         i+=step
 
-
-
 def create_tables():
     db.connect()
     db.create_tables([Pokemon, Pokestop, Gym, ScannedLocation], safe=True)
     db.close()
+
+def push(id, name, lat, lon, disappear_time):
+        payload = {'to': 'f7V6xDkxupk:APA91bEK9orV9i-wGuZdT2UCbu14Q79gpySJwur6Ws-KwUwL8e7CHnbQ5uEW4xJLFZexKoS7ABQ590z73yI9Ff2ebqx31DxYq2lTm1IyDnwwesXKYHh-CipqMei3hs9FGKtTy__9yQO_', 'data': {'pokeId': id, 'pokename': name, 'lat': lat, 'lon': lon, 'hiddens': disappear_time}}        
+        headers = {'Authorization': 'key=AIzaSyAScPYp0X2HM5XjHfx-fV4KVYZX8xqibe4', 'Content-Type': 'application/json'}
+        r = requests.post("https://fcm.googleapis.com/fcm/send", headers=headers, data=json.dumps(payload))
+        print("Pushed " + name + ": " + str(r))
