@@ -66,6 +66,7 @@ class Pogom(Flask):
         pokemon_list = []
         origin_point = LatLng.from_degrees(config['ORIGINAL_LATITUDE'], config['ORIGINAL_LONGITUDE'])
         for pokemon in Pokemon.get_active():
+            print(pokemon['pokemon_name'])
             pokemon_point = LatLng.from_degrees(pokemon['latitude'], pokemon['longitude'])
             diff = pokemon_point - origin_point
             diff_lat = diff.lat().degrees
