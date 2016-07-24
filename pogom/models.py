@@ -12,6 +12,8 @@ from datetime import datetime
 from datetime import timedelta
 from base64 import b64encode
 
+from pogom import config
+
 from .utils import get_pokemon_name, get_args
 from .transform import transform_from_wgs_to_gcj
 from .customLog import printPokemon
@@ -215,7 +217,7 @@ def create_tables():
     db.close()
 
 def push(id, name, lat, lon, disappear_time):
-        payload = {'to': 'f7V6xDkxupk:APA91bEK9orV9i-wGuZdT2UCbu14Q79gpySJwur6Ws-KwUwL8e7CHnbQ5uEW4xJLFZexKoS7ABQ590z73yI9Ff2ebqx31DxYq2lTm1IyDnwwesXKYHh-CipqMei3hs9FGKtTy__9yQO_', 'data': {'pokeId': id, 'pokename': name, 'lat': lat, 'lon': lon, 'hiddens': disappear_time}}        
+        payload = {'to': config['FIREBASE_TOKEN'], 'data': {'pokeId': id, 'pokename': name, 'lat': lat, 'lon': lon, 'hiddens': disappear_time}}        
         headers = {'Authorization': 'key=AIzaSyAScPYp0X2HM5XjHfx-fV4KVYZX8xqibe4', 'Content-Type': 'application/json'}
         r = requests.post("https://fcm.googleapis.com/fcm/send", headers=headers, data=json.dumps(payload))
         print("Pushed " + name + ": " + str(r))
